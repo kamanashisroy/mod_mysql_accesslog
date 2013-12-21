@@ -489,7 +489,7 @@ REQUESTDONE_FUNC(mod_mysql_accesslog_write)
 
 	size_t j;
 
-	data_string *request_header, *response_header, *environment;
+	data_string *request_header, *response_header, *environment, *remote_user;
 
 	MYSQL_BIND *b;
 	MYSQL_STMT *stmt;
@@ -513,6 +513,7 @@ REQUESTDONE_FUNC(mod_mysql_accesslog_write)
 	}
 
 	if (mysql_stmt_prepare(stmt, p->conf.format_query->ptr, p->conf.format_query->used - 1)) {
+		log_error_write(srv, __FILE__, __LINE__, "ss", "Query prepare failed: ", mysql_stmt_error(stmt));
 		return HANDLER_ERROR;
 	}
 
@@ -537,10 +538,15 @@ REQUESTDONE_FUNC(mod_mysql_accesslog_write)
 			break;
 
 		case FORMAT_REMOTE_USER:
-			user_length = HANDLE_LEN(con->authed_user->used);
+			if (NULL != (remote_user = (data_string *)array_get_element(con->environment, "REMOTE_USER")) && remote_user->value->used > 1) {
+			} else {
+				b[j].is_null = &maybe_null;
+				break;
+			}
+			user_length = remote_user->value->used;
 
 			b[j].buffer_type = MYSQL_TYPE_STRING;
-			b[j].buffer = con->authed_user->ptr;
+			b[j].buffer = remote_user->value->ptr;
 			b[j].buffer_length = 2048;
 			b[j].length = &user_length;
 			if (!user_length) {
@@ -549,7 +555,6 @@ REQUESTDONE_FUNC(mod_mysql_accesslog_write)
 				b[j].is_null = NULL;
 			}
 			break;
-
 		case FORMAT_REQUEST_LINE:
 			request_length = HANDLE_LEN(con->request.request_line->used);
 

@@ -1,0 +1,15 @@
+--- build/lighttpd-1.4.33/src/Makefile.am	2013-05-15 16:07:04.000000000 +0600
++++ build/lighttpd-1.4.33_patched/src/Makefile.am	2013-11-23 13:02:46.000000000 +0600
+@@ -101,6 +101,12 @@
+ mod_flv_streaming_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
+ mod_flv_streaming_la_LIBADD = $(common_libadd)
+ 
++lib_LTLIBRARIES += mod_mysql_accesslog.la
++mod_mysql_accesslog_la_SOURCES = mod_mysql_accesslog.c
++mod_mysql_accesslog_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
++mod_mysql_accesslog_la_LIBADD =  $(MYSQL_LIBS) $(common_libadd)
++mod_mysql_accesslog_la_CPPFLAGS = $(MYSQL_INCLUDE)
++
+ lib_LTLIBRARIES += mod_evasive.la
+ mod_evasive_la_SOURCES = mod_evasive.c
+ mod_evasive_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined

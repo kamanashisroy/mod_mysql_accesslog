@@ -1,0 +1,98 @@
+Prerequisites:
+
+1.source distrubution of lighttpd. Here we used version, "1.4.33".
+
+2.And you need mariadb headers and mariadb database.
+
+Procedure:
+
+0. Please decompress the lighttpd source and get into the directory.
+
+tar -xzf lighttpd-1.4.33.tar.gz
+cd lighttpd-1.4.33
+
+1. Open the configure.ac , look for the 'plugins=mod_mysql_vhost' section. Now put the following code in a new para, like the others.
+
+plugins="mod_mysql_accesslog"
+if test ! "x$MYSQL_LIBS" = x; then
+  do_build="$do_build $plugins"
+else
+  no_build="$no_build $plugins"
+fi
+
+2. Add the following lines somewhere near the other module definitions (like, lib_LTLIBRARIES += mod_mysql_vhost.la) in file src/Makefile.am:
+
+  lib_LTLIBRARIES += mod_mysql_accesslog.la
+  mod_mysql_accesslog_la_SOURCES = mod_mysql_accesslog.c
+  mod_mysql_accesslog_la_LDFLAGS = -module -export-dynamic -avoid-version -no-undefined
+  mod_mysql_accesslog_la_LIBADD = $(MYSQL_LIBS) $(common_libadd)
+  mod_mysql_accesslog_la_CPPFLAGS = $(MYSQL_INCLUDE)
+
+3. I am not sure it is needed, but you can edit the src/SConscript file like, 
+
+	'mod_mysql_vhost' : { 'src' : [ 'mod_mysql_vhost.c' ], 'lib' : [ env['LIBMYSQL'] ] },
+	'mod_mysql_accesslog' : { 'src' : [ 'mod_mysql_accesslog.c' ], 'lib' : [ env['LIBMYSQL'] ] },
+
+
+4. Copy mod_mysql_accesslog.c into the src directory.
+
+5. Now run ./autogen.sh
+
+6. Run the following commands in the base directory of lighttpd:
+
+./configure --with-mysql ...
+
+7. Make sure that you see the following lines ,
+
+Plugins:
+
+enabled: 
+  mod_mysql_accesslog
+
+
+8. Now run the following commands.
+
+make clean
+make
+make install
+
+9. Create the database table
+
+CREATE TABLE accesslog (
+  remote_host int(10) unsigned,
+  remote_user varchar(2048),
+  timestamp int(10) unsigned,
+  request_line varchar(2048),
+  status smallint(5) unsigned,
+  bytes_body int(10) unsigned,
+  header varchar(2048),
+  environment varchar(2048),
+  filename varchar(2048),
+  request_protocol enum('VERSION_1_0','VERSION_1_1'),
+  request_method enum('GET','POST','HEAD','OPTIONS','PROPFIND','MKCOL','PUT','DELETE','COPY','MOVE','PROPPATCH','REPORT','CHECKOUT','CHECKIN','VERSION_CONTROL','UNCHECKOUT','MKACTIVITY','MERGE','LOCK','UNLOCK','LABEL','CONNECT'),
+  server_port smallint(5) unsigned,
+  query_string varchar(2048),
+  time_used smallint(5) unsigned,
+  url varchar(2048),
+  server_name varchar(2048),
+  http_host varchar(2048),
+  keep_alive tinyint(3) unsigned,
+  bytes_in int(10) unsigned,
+  bytes_out int(10) unsigned,
+  response_header varchar(2048)
+)
+
+10. Apply the following configuration to your lighttpd.conf
+
+# MySQL Accesslog authentification
+mysql-accesslog.user = "peter"
+mysql-accesslog.pass = "secret"
+
+# MySQL database
+mysql-accesslog.data = "pipe"
+# MySQL socket or host
+mysql-accesslog.sock = "/var/run/mysqld/mysqld.sock"
+#mysql-accesslog.host = "192.168.10.100"
+
+# MySQL query to be executed
+mysql-accesslog.query = "INSERT INTO accesslog SET remote_host=%h, timestamp=%t, status=%s, header=%{User-Agent}i, query_string=%q, url=%U"

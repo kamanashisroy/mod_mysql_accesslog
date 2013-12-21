@@ -1,0 +1,16 @@
+--- build/lighttpd-1.4.33/configure.ac	2013-08-29 03:11:41.000000000 +0600
++++ build/lighttpd-1.4.33_patched/configure.ac	2013-11-23 12:42:38.000000000 +0600
+@@ -665,6 +665,13 @@
+ 	disable_feature="$features"
+ fi
+ 
++plugins="mod_mysql_accesslog"
++if test ! "x$MYSQL_LIBS" = x; then
++	do_build="$do_build $plugins"
++else
++	no_build="$no_build $plugins"
++fi
++
+ plugins="mod_mysql_vhost"
+ if test ! "x$MYSQL_LIBS" = x; then
+ 	do_build="$do_build $plugins"
